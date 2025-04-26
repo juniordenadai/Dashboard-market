@@ -6,40 +6,34 @@ import math
 
 st.set_page_config(layout="wide", page_title="Real-Time Market Dashboard", initial_sidebar_state="expanded")
 
-st.markdown("""
-<style>
-body {
-    background-color: #0e1117;
-    color: #c7d5e0;
-}
-</style>
-""", unsafe_allow_html=True)
-
-st.title("📈 Real-Time Market Dashboard")
+st.title("Real-Time Market Dashboard")
 
 @st.cache_data(ttl=300)
-def get_data(ticker, period='5d', interval='1h'):
+def get_data(ticker, period='5d', interval=None):
     try:
-        data = yf.download(ticker, period=period, interval=interval, group_by="column")
+        if ticker.startswith("^") or ticker.endswith(".SS") or ticker.endswith(".ME") or ticker in us_futures.values():
+            interval = interval or "1d"
+        else:
+            interval = interval or "1h"
+        data = yf.download(ticker, period=period, interval=interval)
+        data.columns = [' '.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
         data.reset_index(inplace=True)
         return data
     except Exception as e:
         st.error(f"Error fetching data for {ticker}: {str(e)}")
         return pd.DataFrame()
 
-def safe_metric_display(col, label, data):
-    if not data.empty and "Close" in data.columns and len(data["Close"]) >= 2:
+def safe_metric_display(col, label, ticker, data):
+    close_col = f"Close {ticker}"
+    if not data.empty and close_col in data.columns and len(data[close_col]) >= 2:
         try:
-            current = data["Close"].iloc[-1]
-            previous = data["Close"].iloc[-2]
+            current = data[close_col].iloc[-1]
+            previous = data[close_col].iloc[-2]
             change = ((current - previous) / previous) * 100 if previous != 0 else 0
             if math.isnan(current) or math.isnan(change):
                 col.metric(label=label, value="N/A", delta="N/A")
             else:
                 col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
-
-                fig = px.line(data, x="Datetime", y="Close", title=f"{label} - Last Days", template="plotly_dark")
-                st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             col.metric(label=label, value="Error", delta="")
     else:
@@ -93,47 +87,47 @@ tabs = st.tabs(["European Indices", "Asian Indices", "Commodities", "Cryptocurre
 
 # Europe Tab
 with tabs[0]:
-    st.header("🌍 European Indices")
+    st.header("European Indices")
     cols = st.columns(len(european_indices))
     for i, (name, ticker) in enumerate(european_indices.items()):
         data = get_data(ticker)
-        safe_metric_display(cols[i], name, data)
+        safe_metric_display(cols[i], name, ticker, data)
 
 # Asia Tab
 with tabs[1]:
-    st.header("🌏 Asian Indices")
+    st.header("Asian Indices")
     cols = st.columns(len(asian_indices))
     for i, (name, ticker) in enumerate(asian_indices.items()):
         data = get_data(ticker)
-        safe_metric_display(cols[i], name, data)
+        safe_metric_display(cols[i], name, ticker, data)
 
 # Commodities Tab
 with tabs[2]:
-    st.header("⛏️ Commodities")
+    st.header("Commodities")
     cols = st.columns(len(commodities))
     for i, (name, ticker) in enumerate(commodities.items()):
         data = get_data(ticker)
-        safe_metric_display(cols[i], name, data)
+        safe_metric_display(cols[i], name, ticker, data)
 
 # Cryptos Tab
 with tabs[3]:
-    st.header("₿ Cryptocurrencies")
+    st.header("Cryptocurrencies")
     cols = st.columns(len(cryptos))
     for i, (name, ticker) in enumerate(cryptos.items()):
         data = get_data(ticker)
-        safe_metric_display(cols[i], name, data)
+        safe_metric_display(cols[i], name, ticker, data)
 
 # US Futures Tab
 with tabs[4]:
-    st.header("🇺🇸 US Futures")
+    st.header("US Futures")
     cols = st.columns(len(us_futures))
     for i, (name, ticker) in enumerate(us_futures.items()):
         data = get_data(ticker)
-        safe_metric_display(cols[i], name, data)
+        safe_metric_display(cols[i], name, ticker, data)
 
 # Crypto Market Profile Tab
 with tabs[5]:
-    st.header("📊 Crypto Market Profile")
+    st.header("Crypto Market Profile")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -146,19 +140,18 @@ with tabs[5]:
 
     crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
 
-    if not crypto_data.empty:
-        st.divider()
+    close_col = f"Close {ticker}"
+    if not crypto_data.empty and close_col in crypto_data.columns:
         st.subheader(f"{selected_crypto} Price Chart")
-        fig_price = px.line(crypto_data, x="Datetime", y="Close", title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
+        fig_price = px.line(crypto_data, x="Datetime", y=close_col, title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
         st.plotly_chart(fig_price, use_container_width=True)
 
-        st.divider()
         st.subheader(f"{selected_crypto} Volume Profile")
-        hist_data = pd.cut(crypto_data['Close'], bins=50)
-        volume_profile = crypto_data.groupby(hist_data)['Volume'].sum().reset_index()
+        hist_data = pd.cut(crypto_data[close_col], bins=50)
+        volume_profile = crypto_data.groupby(hist_data)[f"Volume {ticker}"].sum().reset_index()
 
-        volume_profile['price_bin'] = volume_profile['Close'].apply(lambda x: x.mid)
-        fig_volume = px.bar(volume_profile, x="Volume", y="price_bin", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
+        volume_profile['price_bin'] = volume_profile[close_col].apply(lambda x: x.mid)
+        fig_volume = px.bar(volume_profile, x=f"Volume {ticker}", y="price_bin", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
         fig_volume.update_layout(yaxis_title="Price Range")
         st.plotly_chart(fig_volume, use_container_width=True)
     else:
