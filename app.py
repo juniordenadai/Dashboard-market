@@ -100,7 +100,7 @@ tabs = st.tabs(["European Indices", "Asian Indices", "Commodities", "Cryptocurre
 
 # Europe Tab
 with tabs[0]:
-    st.header("\ud83c\udf0d European Indices")
+    st.header("European Indices")
     cols = st.columns(len(european_indices))
     for i, (name, ticker) in enumerate(european_indices.items()):
         data = get_data(ticker)
@@ -108,7 +108,7 @@ with tabs[0]:
 
 # Asia Tab
 with tabs[1]:
-    st.header("\ud83c\udf0f Asian Indices")
+    st.header("Asian Indices")
     cols = st.columns(len(asian_indices))
     for i, (name, ticker) in enumerate(asian_indices.items()):
         data = get_data(ticker)
@@ -116,7 +116,7 @@ with tabs[1]:
 
 # Commodities Tab
 with tabs[2]:
-    st.header("\u26cf\ufe0f Commodities")
+    st.header("Commodities")
     cols = st.columns(len(commodities))
     for i, (name, ticker) in enumerate(commodities.items()):
         data = get_data(ticker)
@@ -124,7 +124,7 @@ with tabs[2]:
 
 # Cryptos Tab
 with tabs[3]:
-    st.header("\u20bf Cryptocurrencies")
+    st.header("Cryptocurrencies")
     cols = st.columns(len(cryptos))
     for i, (name, ticker) in enumerate(cryptos.items()):
         data = get_data(ticker)
@@ -132,7 +132,7 @@ with tabs[3]:
 
 # US Futures Tab
 with tabs[4]:
-    st.header("\ud83c\uddfa\ud83c\uddf8 US Futures")
+    st.header(" US Futures")
     cols = st.columns(len(us_futures))
     for i, (name, ticker) in enumerate(us_futures.items()):
         data = get_data(ticker)
@@ -140,7 +140,7 @@ with tabs[4]:
 
 # Crypto Market Profile Tab
 with tabs[5]:
-    st.header("\ud83d\udcca Crypto Market Profile")
+    st.header("Crypto Market Profile")
 
     selected_crypto = st.selectbox("Select Cryptocurrency:", list(cryptos.keys()))
     selected_period = st.selectbox("Select Period:", ["7d", "30d", "90d", "180d"])
