@@ -1,0 +1,60 @@
+
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+import plotly.express as px
+from datetime import datetime, timedelta
+
+st.set_page_config(layout="wide", page_title="Dashboard de Mercado em Tempo Real")
+
+st.title("📈 Dashboard de Mercado em Tempo Real")
+
+# Função para buscar e formatar dados de um ativo
+@st.cache_data(ttl=300)
+def get_data(ticker, period='5d', interval='1h'):
+    data = yf.download(ticker, period=period, interval=interval)
+    data.reset_index(inplace=True)
+    return data
+
+# Listas de ativos
+indices = {
+    "S&P 500": "^GSPC",
+    "DAX": "^GDAXI",
+    "IBEX 35": "^IBEX",
+    "Euro Stoxx 50": "^STOXX50E"
+}
+
+commodities = {
+    "Ouro": "GC=F",
+    "Prata": "SI=F",
+    "Petróleo Brent": "BZ=F",
+    "Petróleo WTI": "CL=F"
+}
+
+tab1, tab2 = st.tabs(["Índices Globais", "Commodities"])
+
+# Aba de Índices
+with tab1:
+    st.header("📊 Índices Globais")
+    cols = st.columns(len(indices))
+    for i, (nome, ticker) in enumerate(indices.items()):
+        data = get_data(ticker)
+        current = data["Close"].iloc[-1]
+        change = (data["Close"].iloc[-1] - data["Close"].iloc[-2]) / data["Close"].iloc[-2] * 100
+        cols[i].metric(label=nome, value=f"{current:,.2f}", delta=f"{change:.2f}%")
+        fig = px.line(data, x="Datetime", y="Close", title=f"{nome} - Últimos dias")
+        st.plotly_chart(fig, use_container_width=True)
+
+# Aba de Commodities
+with tab2:
+    st.header("⛏️ Commodities")
+    cols = st.columns(len(commodities))
+    for i, (nome, ticker) in enumerate(commodities.items()):
+        data = get_data(ticker)
+        current = data["Close"].iloc[-1]
+        change = (data["Close"].iloc[-1] - data["Close"].iloc[-2]) / data["Close"].iloc[-2] * 100
+        cols[i].metric(label=nome, value=f"{current:,.2f}", delta=f"{change:.2f}%")
+        fig = px.line(data, x="Datetime", y="Close", title=f"{nome} - Últimos dias")
+        st.plotly_chart(fig, use_container_width=True)
+
+st.caption("Atualizado a cada 5 minutos | Dados via Yahoo Finance")
