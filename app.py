@@ -15,7 +15,7 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("\ud83d\udcc8 Real-Time Market Dashboard")
+st.title("Real-Time Market Dashboard")
 
 @st.cache_data(ttl=300)
 def get_data(ticker, period='5d', interval='1h'):
