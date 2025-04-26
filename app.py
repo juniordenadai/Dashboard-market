@@ -8,40 +8,6 @@ st.set_page_config(layout="wide", page_title="Real-Time Market Dashboard", initi
 
 st.title("Real-Time Market Dashboard")
 
-@st.cache_data(ttl=300)
-def get_data(ticker, period='5d', interval=None):
-    try:
-        if ticker.startswith("^") or ticker.endswith(".SS") or ticker.endswith(".ME") or ticker in us_futures.values():
-            interval = interval or "1d"
-        else:
-            interval = interval or "1h"
-        data = yf.download(ticker, period=period, interval=interval)
-        data.columns = [' '.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
-        data.reset_index(inplace=True)
-        return data
-    except Exception:
-        return pd.DataFrame()
-
-def safe_metric_display(col, label, ticker, data):
-    if data.empty or len(data) < 2:
-        col.metric(label=label, value="No data", delta="")
-        return
-
-    possible_close_cols = [f"Close {ticker}", "Close"]
-    close_col = next((c for c in possible_close_cols if c in data.columns), None)
-
-    if close_col:
-        try:
-            current = data[close_col].iloc[-1]
-            previous = data[close_col].iloc[-2]
-            change = ((current - previous) / previous) * 100 if previous != 0 else 0
-            col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
-        except Exception:
-            col.metric(label=label, value="Error", delta="")
-    else:
-        col.metric(label=label, value="No data", delta="")
-
-# Tickers by category
 market_indices = {
     "DAX (Germany)": "^GDAXI",
     "IBEX 35 (Spain)": "^IBEX",
@@ -79,6 +45,43 @@ cryptos = {
     "XRP": "XRP-USD"
 }
 
+@st.cache_data(ttl=300)
+def get_data(ticker, period='5d', interval=None):
+    try:
+        if ticker in cryptos.values():
+            interval = interval or "1h"
+        elif ticker in commodities.values():
+            interval = interval or "1d"
+        elif ticker.startswith("^") or ticker.endswith(".SS") or ticker.endswith(".ME") or ticker in market_indices.values():
+            interval = interval or "1d"
+        else:
+            interval = interval or "1h"
+        data = yf.download(ticker, period=period, interval=interval)
+        data.columns = [' '.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
+        data.reset_index(inplace=True)
+        return data
+    except Exception:
+        return pd.DataFrame()
+
+def safe_metric_display(col, label, ticker, data):
+    if data.empty or len(data) < 2:
+        col.metric(label=label, value="No data", delta="")
+        return
+
+    possible_close_cols = [f"Close {ticker}", "Close"]
+    close_col = next((c for c in possible_close_cols if c in data.columns), None)
+
+    if close_col:
+        try:
+            current = data[close_col].iloc[-1]
+            previous = data[close_col].iloc[-2]
+            change = ((current - previous) / previous) * 100 if previous != 0 else 0
+            col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
+        except Exception:
+            col.metric(label=label, value="Error", delta="")
+    else:
+        col.metric(label=label, value="No data", delta="")
+
 tabs = st.tabs(["Traditional Markets", "Commodities", "Cryptocurrencies", "Crypto Market Profile"])
 
 # Traditional Markets Tab
@@ -90,7 +93,8 @@ with tabs[0]:
         for j in range(3):
             if i + j < len(rows):
                 name, ticker = rows[i + j]
-                data = get_data(ticker)
+                with st.spinner(f"Loading {name}..."):
+                    data = get_data(ticker)
                 safe_metric_display(cols[j], name, ticker, data)
 
 # Commodities Tab
@@ -102,7 +106,8 @@ with tabs[1]:
         for j in range(3):
             if i + j < len(rows):
                 name, ticker = rows[i + j]
-                data = get_data(ticker)
+                with st.spinner(f"Loading {name}..."):
+                    data = get_data(ticker)
                 safe_metric_display(cols[j], name, ticker, data)
 
 # Cryptos Tab
@@ -114,7 +119,8 @@ with tabs[2]:
         for j in range(3):
             if i + j < len(rows):
                 name, ticker = rows[i + j]
-                data = get_data(ticker)
+                with st.spinner(f"Loading {name}..."):
+                    data = get_data(ticker)
                 safe_metric_display(cols[j], name, ticker, data)
 
 # Crypto Market Profile Tab
@@ -130,7 +136,8 @@ with tabs[3]:
     ticker = cryptos[selected_crypto]
     period_mapping = {"7d": "7d", "30d": "30d", "90d": "90d", "180d": "180d"}
 
-    crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
+    with st.spinner(f"Loading data for {selected_crypto}..."):
+        crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
 
     possible_close_cols = [f"Close {ticker}", "Close"]
     close_col = next((c for c in possible_close_cols if c in crypto_data.columns), None)
