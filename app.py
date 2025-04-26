@@ -20,7 +20,6 @@ def get_data(ticker, period='5d', interval=None):
         data.reset_index(inplace=True)
         return data
     except Exception as e:
-        st.error(f"Error fetching data for {ticker}: {str(e)}")
         return pd.DataFrame()
 
 def safe_metric_display(col, label, ticker, data):
@@ -34,13 +33,13 @@ def safe_metric_display(col, label, ticker, data):
                 col.metric(label=label, value="N/A", delta="N/A")
             else:
                 col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
-        except Exception as e:
+        except Exception:
             col.metric(label=label, value="Error", delta="")
     else:
         col.metric(label=label, value="No data", delta="")
 
 # Tickers by category
-european_indices = {
+market_indices = {
     "DAX (Germany)": "^GDAXI",
     "IBEX 35 (Spain)": "^IBEX",
     "CAC 40 (France)": "^FCHI",
@@ -49,15 +48,16 @@ european_indices = {
     "MOEX (Russia)": "IMOEX.ME",
     "OMXS30 (Sweden)": "^OMXS30",
     "SMI (Switzerland)": "^SSMI",
-    "Euro Stoxx 50": "^STOXX50E"
-}
-
-asian_indices = {
+    "Euro Stoxx 50": "^STOXX50E",
     "Nikkei 225 (Japan)": "^N225",
     "Hang Seng (Hong Kong)": "^HSI",
     "Shanghai Composite (China)": "000001.SS",
     "KOSPI (South Korea)": "^KS11",
-    "Sensex (India)": "^BSESN"
+    "Sensex (India)": "^BSESN",
+    "S&P 500 Futures": "^GSPC",
+    "Nasdaq Futures": "^IXIC",
+    "Dow Jones Futures": "^DJI",
+    "Russell 2000 Futures": "^RUT"
 }
 
 commodities = {
@@ -76,57 +76,46 @@ cryptos = {
     "XRP": "XRP-USD"
 }
 
-us_futures = {
-    "S&P 500 Futures": "^GSPC",
-    "Nasdaq Futures": "^IXIC",
-    "Dow Jones Futures": "^DJI",
-    "Russell 2000 Futures": "^RUT"
-}
+tabs = st.tabs(["Traditional Markets", "Commodities", "Cryptocurrencies", "Crypto Market Profile"])
 
-tabs = st.tabs(["European Indices", "Asian Indices", "Commodities", "Cryptocurrencies", "US Futures", "Crypto Market Profile"])
-
-# Europe Tab
+# Traditional Markets Tab
 with tabs[0]:
-    st.header("European Indices")
-    cols = st.columns(len(european_indices))
-    for i, (name, ticker) in enumerate(european_indices.items()):
-        data = get_data(ticker)
-        safe_metric_display(cols[i], name, ticker, data)
-
-# Asia Tab
-with tabs[1]:
-    st.header("Asian Indices")
-    cols = st.columns(len(asian_indices))
-    for i, (name, ticker) in enumerate(asian_indices.items()):
-        data = get_data(ticker)
-        safe_metric_display(cols[i], name, ticker, data)
+    st.header("Traditional Market Indices")
+    rows = list(market_indices.items())
+    for i in range(0, len(rows), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(rows):
+                name, ticker = rows[i + j]
+                data = get_data(ticker)
+                safe_metric_display(cols[j], name, ticker, data)
 
 # Commodities Tab
-with tabs[2]:
+with tabs[1]:
     st.header("Commodities")
-    cols = st.columns(len(commodities))
-    for i, (name, ticker) in enumerate(commodities.items()):
-        data = get_data(ticker)
-        safe_metric_display(cols[i], name, ticker, data)
+    rows = list(commodities.items())
+    for i in range(0, len(rows), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(rows):
+                name, ticker = rows[i + j]
+                data = get_data(ticker)
+                safe_metric_display(cols[j], name, ticker, data)
 
 # Cryptos Tab
-with tabs[3]:
+with tabs[2]:
     st.header("Cryptocurrencies")
-    cols = st.columns(len(cryptos))
-    for i, (name, ticker) in enumerate(cryptos.items()):
-        data = get_data(ticker)
-        safe_metric_display(cols[i], name, ticker, data)
-
-# US Futures Tab
-with tabs[4]:
-    st.header("US Futures")
-    cols = st.columns(len(us_futures))
-    for i, (name, ticker) in enumerate(us_futures.items()):
-        data = get_data(ticker)
-        safe_metric_display(cols[i], name, ticker, data)
+    rows = list(cryptos.items())
+    for i in range(0, len(rows), 3):
+        cols = st.columns(3)
+        for j in range(3):
+            if i + j < len(rows):
+                name, ticker = rows[i + j]
+                data = get_data(ticker)
+                safe_metric_display(cols[j], name, ticker, data)
 
 # Crypto Market Profile Tab
-with tabs[5]:
+with tabs[3]:
     st.header("Crypto Market Profile")
     col1, col2 = st.columns(2)
 
