@@ -19,20 +19,23 @@ def get_data(ticker, period='5d', interval=None):
         data.columns = [' '.join(col).strip() if isinstance(col, tuple) else col for col in data.columns]
         data.reset_index(inplace=True)
         return data
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 def safe_metric_display(col, label, ticker, data):
-    close_col = f"Close {ticker}"
-    if not data.empty and close_col in data.columns and len(data[close_col]) >= 2:
+    if data.empty or len(data) < 2:
+        col.metric(label=label, value="No data", delta="")
+        return
+
+    possible_close_cols = [f"Close {ticker}", "Close"]
+    close_col = next((c for c in possible_close_cols if c in data.columns), None)
+
+    if close_col:
         try:
             current = data[close_col].iloc[-1]
             previous = data[close_col].iloc[-2]
             change = ((current - previous) / previous) * 100 if previous != 0 else 0
-            if math.isnan(current) or math.isnan(change):
-                col.metric(label=label, value="N/A", delta="N/A")
-            else:
-                col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
+            col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
         except Exception:
             col.metric(label=label, value="Error", delta="")
     else:
@@ -129,20 +132,25 @@ with tabs[3]:
 
     crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
 
-    close_col = f"Close {ticker}"
-    if not crypto_data.empty and close_col in crypto_data.columns:
+    possible_close_cols = [f"Close {ticker}", "Close"]
+    close_col = next((c for c in possible_close_cols if c in crypto_data.columns), None)
+
+    if close_col:
         st.subheader(f"{selected_crypto} Price Chart")
         fig_price = px.line(crypto_data, x="Datetime", y=close_col, title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
         st.plotly_chart(fig_price, use_container_width=True)
 
         st.subheader(f"{selected_crypto} Volume Profile")
-        hist_data = pd.cut(crypto_data[close_col], bins=50)
-        volume_profile = crypto_data.groupby(hist_data)[f"Volume {ticker}"].sum().reset_index()
+        possible_volume_cols = [f"Volume {ticker}", "Volume"]
+        volume_col = next((c for c in possible_volume_cols if c in crypto_data.columns), None)
 
-        volume_profile['price_bin'] = volume_profile[close_col].apply(lambda x: x.mid)
-        fig_volume = px.bar(volume_profile, x=f"Volume {ticker}", y="price_bin", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
-        fig_volume.update_layout(yaxis_title="Price Range")
-        st.plotly_chart(fig_volume, use_container_width=True)
+        if volume_col:
+            hist_data = pd.cut(crypto_data[close_col], bins=50)
+            volume_profile = crypto_data.groupby(hist_data)[volume_col].sum().reset_index()
+            volume_profile['price_bin'] = volume_profile[hist_data.name].apply(lambda x: x.mid)
+            fig_volume = px.bar(volume_profile, x=volume_col, y="price_bin", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
+            fig_volume.update_layout(yaxis_title="Price Range")
+            st.plotly_chart(fig_volume, use_container_width=True)
     else:
         st.error("No data available for this selection.")
 
