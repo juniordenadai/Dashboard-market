@@ -15,12 +15,12 @@ body {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("Real-Time Market Dashboard")
+st.title("📈 Real-Time Market Dashboard")
 
 @st.cache_data(ttl=300)
 def get_data(ticker, period='5d', interval='1h'):
     try:
-        data = yf.download(ticker, period=period, interval=interval)
+        data = yf.download(ticker, period=period, interval=interval, group_by="column")
         data.reset_index(inplace=True)
         return data
     except Exception as e:
@@ -30,8 +30,8 @@ def get_data(ticker, period='5d', interval='1h'):
 def safe_metric_display(col, label, data):
     if not data.empty and "Close" in data.columns and len(data["Close"]) >= 2:
         try:
-            current = float(data["Close"].iloc[-1])
-            previous = float(data["Close"].iloc[-2])
+            current = data["Close"].iloc[-1]
+            previous = data["Close"].iloc[-2]
             change = ((current - previous) / previous) * 100 if previous != 0 else 0
             if math.isnan(current) or math.isnan(change):
                 col.metric(label=label, value="N/A", delta="N/A")
@@ -77,7 +77,7 @@ commodities = {
     "Gold": "GC=F",
     "Silver": "SI=F",
     "Copper": "HG=F",
-    "Iron Ore (SGX)": "TIO1!",  # Correction applied here
+    "Iron Ore (SGX)": "TIO1!",
     "Brent Crude Oil": "BZ=F",
     "WTI Crude Oil": "CL=F"
 }
@@ -100,7 +100,7 @@ tabs = st.tabs(["European Indices", "Asian Indices", "Commodities", "Cryptocurre
 
 # Europe Tab
 with tabs[0]:
-    st.header("European Indices")
+    st.header("🌍 European Indices")
     cols = st.columns(len(european_indices))
     for i, (name, ticker) in enumerate(european_indices.items()):
         data = get_data(ticker)
@@ -108,7 +108,7 @@ with tabs[0]:
 
 # Asia Tab
 with tabs[1]:
-    st.header("Asian Indices")
+    st.header("🌏 Asian Indices")
     cols = st.columns(len(asian_indices))
     for i, (name, ticker) in enumerate(asian_indices.items()):
         data = get_data(ticker)
@@ -116,7 +116,7 @@ with tabs[1]:
 
 # Commodities Tab
 with tabs[2]:
-    st.header("Commodities")
+    st.header("⛏️ Commodities")
     cols = st.columns(len(commodities))
     for i, (name, ticker) in enumerate(commodities.items()):
         data = get_data(ticker)
@@ -124,7 +124,7 @@ with tabs[2]:
 
 # Cryptos Tab
 with tabs[3]:
-    st.header("Cryptocurrencies")
+    st.header("₿ Cryptocurrencies")
     cols = st.columns(len(cryptos))
     for i, (name, ticker) in enumerate(cryptos.items()):
         data = get_data(ticker)
@@ -132,7 +132,7 @@ with tabs[3]:
 
 # US Futures Tab
 with tabs[4]:
-    st.header(" US Futures")
+    st.header("🇺🇸 US Futures")
     cols = st.columns(len(us_futures))
     for i, (name, ticker) in enumerate(us_futures.items()):
         data = get_data(ticker)
@@ -140,10 +140,13 @@ with tabs[4]:
 
 # Crypto Market Profile Tab
 with tabs[5]:
-    st.header("Crypto Market Profile")
+    st.header("📊 Crypto Market Profile")
+    col1, col2 = st.columns(2)
 
-    selected_crypto = st.selectbox("Select Cryptocurrency:", list(cryptos.keys()))
-    selected_period = st.selectbox("Select Period:", ["7d", "30d", "90d", "180d"])
+    with col1:
+        selected_crypto = st.selectbox("Select Cryptocurrency:", list(cryptos.keys()))
+    with col2:
+        selected_period = st.selectbox("Select Period:", ["7d", "30d", "90d", "180d"])
 
     ticker = cryptos[selected_crypto]
     period_mapping = {"7d": "7d", "30d": "30d", "90d": "90d", "180d": "180d"}
@@ -151,15 +154,19 @@ with tabs[5]:
     crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
 
     if not crypto_data.empty:
+        st.divider()
         st.subheader(f"{selected_crypto} Price Chart")
         fig_price = px.line(crypto_data, x=crypto_data.columns[0], y="Close", title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
         st.plotly_chart(fig_price, use_container_width=True)
 
+        st.divider()
         st.subheader(f"{selected_crypto} Volume Profile")
         hist_data = pd.cut(crypto_data['Close'], bins=50)
-        volume_profile = crypto_data.groupby(hist_data)['Volume'].sum()
-        volume_profile = volume_profile.reset_index()
-        fig_volume = px.bar(volume_profile, x="Volume", y="Close", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
+        volume_profile = crypto_data.groupby(hist_data)['Volume'].sum().reset_index()
+
+        volume_profile['price_bin'] = volume_profile['Close'].apply(lambda x: x.mid)
+        fig_volume = px.bar(volume_profile, x="Volume", y="price_bin", orientation='h', title=f"{selected_crypto} Volume by Price", template="plotly_dark")
+        fig_volume.update_layout(yaxis_title="Price Range")
         st.plotly_chart(fig_volume, use_container_width=True)
     else:
         st.error("No data available for this selection.")
