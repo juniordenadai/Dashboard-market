@@ -138,7 +138,14 @@ with tabs[3]:
         crypto_data = get_data(ticker, period=period_mapping[selected_period], interval='1h')
 
     possible_close_cols = [f"Close {ticker}", "Close"]
+    possible_high_cols = [f"High {ticker}", "High"]
+    possible_low_cols = [f"Low {ticker}", "Low"]
+    possible_volume_cols = [f"Volume {ticker}", "Volume"]
+
     close_col = next((c for c in possible_close_cols if c in crypto_data.columns), None)
+    high_col = next((c for c in possible_high_cols if c in crypto_data.columns), None)
+    low_col = next((c for c in possible_low_cols if c in crypto_data.columns), None)
+    volume_col = next((c for c in possible_volume_cols if c in crypto_data.columns), None)
 
     if close_col:
         show_vwap = st.checkbox("Show VWAP", value=True)
@@ -148,8 +155,9 @@ with tabs[3]:
         fig_price = go.Figure()
         fig_price.add_trace(go.Scatter(x=crypto_data['Datetime'], y=crypto_data[close_col], name='Price'))
 
-        if show_vwap:
-            vwap = (crypto_data['Volume'] * (crypto_data['High'] + crypto_data['Low'] + crypto_data['Close']) / 3).cumsum() / crypto_data['Volume'].cumsum()
+        if show_vwap and high_col and low_col and volume_col:
+            typical_price = (crypto_data[high_col] + crypto_data[low_col] + crypto_data[close_col]) / 3
+            vwap = (typical_price * crypto_data[volume_col]).cumsum() / crypto_data[volume_col].cumsum()
             fig_price.add_trace(go.Scatter(x=crypto_data['Datetime'], y=vwap, name='VWAP', line=dict(dash='dash')))
 
         if show_fibonacci:
@@ -163,8 +171,6 @@ with tabs[3]:
         st.plotly_chart(fig_price, use_container_width=True)
 
         st.subheader(f"{selected_crypto} Volume Profile")
-        possible_volume_cols = [f"Volume {ticker}", "Volume"]
-        volume_col = next((c for c in possible_volume_cols if c in crypto_data.columns), None)
 
         if volume_col:
             hist_data = pd.cut(crypto_data[close_col], bins=50)
