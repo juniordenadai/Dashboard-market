@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import math
 
 st.set_page_config(layout="wide", page_title="Real-Time Market Dashboard", initial_sidebar_state="expanded")
@@ -14,8 +15,6 @@ market_indices = {
     "CAC 40 (France)": "^FCHI",
     "FTSE MIB (Italy)": "FTSEMIB.MI",
     "FTSE 100 (United Kingdom)": "^FTSE",
-    "MOEX (Russia)": "IMOEX.ME",
-    "OMXS30 (Sweden)": "^OMXS30",
     "SMI (Switzerland)": "^SSMI",
     "Euro Stoxx 50": "^STOXX50E",
     "Nikkei 225 (Japan)": "^N225",
@@ -33,7 +32,6 @@ commodities = {
     "Gold": "GC=F",
     "Silver": "SI=F",
     "Copper": "HG=F",
-    "Iron Ore (SGX)": "TIO1!",
     "Brent Crude Oil": "BZ=F",
     "WTI Crude Oil": "CL=F"
 }
@@ -143,8 +141,25 @@ with tabs[3]:
     close_col = next((c for c in possible_close_cols if c in crypto_data.columns), None)
 
     if close_col:
+        show_vwap = st.checkbox("Show VWAP", value=True)
+        show_fibonacci = st.checkbox("Show Fibonacci Retracement", value=False)
+
         st.subheader(f"{selected_crypto} Price Chart")
-        fig_price = px.line(crypto_data, x="Datetime", y=close_col, title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
+        fig_price = go.Figure()
+        fig_price.add_trace(go.Scatter(x=crypto_data['Datetime'], y=crypto_data[close_col], name='Price'))
+
+        if show_vwap:
+            vwap = (crypto_data['Volume'] * (crypto_data['High'] + crypto_data['Low'] + crypto_data['Close']) / 3).cumsum() / crypto_data['Volume'].cumsum()
+            fig_price.add_trace(go.Scatter(x=crypto_data['Datetime'], y=vwap, name='VWAP', line=dict(dash='dash')))
+
+        if show_fibonacci:
+            highest = crypto_data[close_col].max()
+            lowest = crypto_data[close_col].min()
+            levels = [0.236, 0.382, 0.5, 0.618, 0.786]
+            for level in levels:
+                fig_price.add_hline(y=highest - (highest - lowest) * level, line_dash='dot', annotation_text=f"{level*100:.1f}%", annotation_position="right")
+
+        fig_price.update_layout(template="plotly_dark", title=f"{selected_crypto} Price - Last {selected_period}", xaxis_title="Date", yaxis_title="Price")
         st.plotly_chart(fig_price, use_container_width=True)
 
         st.subheader(f"{selected_crypto} Volume Profile")
