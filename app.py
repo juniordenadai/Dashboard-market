@@ -38,14 +38,7 @@ def safe_metric_display(col, label, data):
             else:
                 col.metric(label=label, value=f"{current:,.2f}", delta=f"{change:.2f}%")
 
-                if "Datetime" in data.columns:
-                    x_axis = "Datetime"
-                elif "Date" in data.columns:
-                    x_axis = "Date"
-                else:
-                    x_axis = data.index.name if data.index.name else data.index
-
-                fig = px.line(data, x=x_axis, y="Close", title=f"{label} - Last Days", template="plotly_dark")
+                fig = px.line(data, x="Datetime", y="Close", title=f"{label} - Last Days", template="plotly_dark")
                 st.plotly_chart(fig, use_container_width=True)
         except Exception as e:
             col.metric(label=label, value="Error", delta="")
@@ -156,7 +149,7 @@ with tabs[5]:
     if not crypto_data.empty:
         st.divider()
         st.subheader(f"{selected_crypto} Price Chart")
-        fig_price = px.line(crypto_data, x=crypto_data.columns[0], y="Close", title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
+        fig_price = px.line(crypto_data, x="Datetime", y="Close", title=f"{selected_crypto} Price - Last {selected_period}", template="plotly_dark")
         st.plotly_chart(fig_price, use_container_width=True)
 
         st.divider()
